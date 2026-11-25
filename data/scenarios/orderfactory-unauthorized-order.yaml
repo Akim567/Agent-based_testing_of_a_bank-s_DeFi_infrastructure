@@ -1,0 +1,89 @@
+schema_version: "0.1"
+
+metadata:
+  id: "2026-09-08-order-factory-unauthorized-order"
+  title: "Создание операции без согласия клиента"
+  status: "draft"
+
+source:
+  incident_id: "2026-09-08-order-factory"
+  url: "https://github.com/SunWeb3Sec/DeFiHackLabs/blob/759488f3d6170288cb8d8d5747dff070002dbe56/src/test/2026-09/OrderFactory_exp.sol"
+  version: "759488f3d6170288cb8d8d5747dff070002dbe56"
+  summary_ru: "Атакующий создаёт заявку от имени клиента и назначает себя получателем средств."
+
+mapping:
+  incident_class: "unauthorized_operation_creation"
+  requirements:
+    - "ORD-01"
+    - "ORD-02"
+    - "ORD-03"
+  stand_components:
+    - "BankAPI"
+    - "PolicyEngine"
+    - "AccountStore"
+    - "AuditLog"
+
+initial_state:
+  principals:
+    - id: "client-1"
+      type: "client"
+      status: "active"
+    - id: "attacker-1"
+      type: "external"
+      status: "active"
+  accounts:
+    - id: "account-client-1"
+      owner_id: "client-1"
+      asset: "TEST"
+      balance: 1000
+  authorizations: []
+  operations: []
+
+configuration:
+  checks:
+    owner_authorization: false
+    explicit_amount: false
+    fixed_refund_recipient: false
+
+actions:
+  - step: 1
+    actor: "attacker-1"
+    command: "createOperation"
+    input:
+      owner_id: "client-1"
+      source_account_id: "account-client-1"
+      amount: 1000
+      destination: "attacker-1"
+      nonce: 1
+    expect:
+      status: "AUTHORIZED"
+  - step: 2
+    actor: "attacker-1"
+    command: "executeOperation"
+    input:
+      operation_ref: "step-1.result.operation_id"
+    expect:
+      status: "COMPLETED"
+
+oracle:
+  requirements:
+    - id: "ORD-01"
+      invariant: "Операция требует согласия владельца счёта."
+      violation: "Баланс клиента изменился без его авторизации."
+    - id: "ORD-02"
+      invariant: "Списывается только явно авторизованная сумма."
+      violation: "Система использовала весь баланс без поручения клиента."
+    - id: "ORD-03"
+      invariant: "Получатель средств зафиксирован авторизованным поручением."
+      violation: "Атакующий назначил себя получателем без согласия клиента."
+
+expected_result:
+  vulnerable:
+    outcome: "violation_detected"
+    final_balances:
+      account-client-1: 0
+  protected:
+    outcome: "blocked"
+    blocked_at_step: 1
+    error_code: "UNAUTHORIZED"
+

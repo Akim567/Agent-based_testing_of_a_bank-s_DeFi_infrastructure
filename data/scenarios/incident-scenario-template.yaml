@@ -1,0 +1,54 @@
+schema_version: "0.1"
+
+metadata:
+  id: "incident-id-scenario-name"
+  title: "Краткое название сценария"
+  status: "draft" # draft | reviewed | reference
+
+source:
+  incident_id: "incident-id"
+  url: "https://example.org/source"
+  version: "commit-or-date"
+  summary_ru: "Краткое описание исходного инцидента"
+
+mapping:
+  incident_class: "authorization_bypass"
+  requirements:
+    - "REQ-01"
+  stand_components:
+    - "BankAPI"
+    - "PolicyEngine"
+
+initial_state:
+  principals: []
+  accounts: []
+  authorizations: []
+  operations: []
+
+configuration:
+  checks:
+    owner_authorization: true
+    nonce_uniqueness: true
+    permission_scope: true
+
+actions:
+  - step: 1
+    actor: "principal-id"
+    command: "createOperation"
+    input: {}
+    expect:
+      status: "AUTHORIZED"
+
+oracle:
+  requirements:
+    - id: "REQ-01"
+      invariant: "Проверяемое правило"
+      violation: "Наблюдаемый признак нарушения"
+
+expected_result:
+  vulnerable:
+    outcome: "violation_detected"
+  protected:
+    outcome: "blocked"
+    error_code: "UNAUTHORIZED"
+
